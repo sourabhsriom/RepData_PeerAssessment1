@@ -1,25 +1,65 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+Activity monitoring analysis
+==================================
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the “quantified self” movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+```{r, message=F, warning=F}
+library(doBy)
+library(chron)
+library(ggplot2)
+act = read.csv("activity.csv", header = T)
+summary = summaryBy(steps ~ date, data = act, FUN = list(sum, mean))
+
+names(summary) = c("date", "steps_Sum", "steps_Mean")
+summary[,1:2]
+```
+
+Following is the histogram of the number of steps taken
+
+```{r, echo=FALSE}
+hist(summary$steps_Sum, xlab = "Number of Steps", main = "Histogram of number of steps taken per day")
+meanSteps = mean(summary$steps_Sum, na.rm = T)
+
+```
 
 
-## Loading and preprocessing the data
 
+Following is the mean of the number of steps taken per day is `r format(meanSteps, digits = 6)`
+and the median of the values is `r format(median(summary$steps_Sum, na.rm = T), digits = 6)`
 
+```{r,message=F, warning=F,echo=FALSE}
+# act$interval = as.factor(act$interval)
 
-## What is mean total number of steps taken per day?
+timeSummary = aggregate(steps ~ interval, data = act, FUN = mean)
 
+g = ggplot(data = timeSummary, aes(x = interval))
+g + geom_bar(colour = "black", fill = "blue") 
 
+```
 
-## What is the average daily activity pattern?
+Following is the number of NA values in the dataset is `r sum(is.na(act$steps))`
 
+```{r, message=F, warning=F,echo=FALSE}
+# act$steps[is.na(act$steps)] = timeSummary$steps[timeSummary$interval==act$interval]
+act$steps[is.na(act$steps)] = summary$steps_Mean[summary$date==act$date]
+summaryNew = summaryBy(steps ~ date, data = act, FUN = sum)
+names(summaryNew) = c("date", "steps_Sum")
+hist(summaryNew$steps_Sum, xlab = "Number of Steps", main = "Histogram of number of steps taken per day")
+meanSteps = mean(summaryNew$steps_Sum, na.rm = T)
+```
 
+To substitute the missing values, we use the average steps taken per day(with the NA values) and put them into the previously NA fields in the steps column.
 
-## Imputing missing values
+Following is the mean of the number of steps taken per day after accounting for the NA values `r format(meanSteps, digits = 6)`
+and the median of the values is `r format(median(summary$steps_Sum, na.rm = T), digits = 6)`
 
+No we take a look at the difference in steps taken considering the day being a weekend or weekday.
 
+```{r, message=F, warning=F, echo=F}
+act$weekday = !chron :: is.weekend(act$date)
+act$weekday[act$weekday==TRUE] = "Weekday"
+act$weekday[act$weekday==FALSE] = "Weekend"
+timeSummary = aggregate(steps ~ interval + weekday, data = act, FUN = mean)
+g = ggplot(data = timeSummary, aes(x = interval, fill = weekday))
+g + geom_bar()
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
